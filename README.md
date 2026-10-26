@@ -6,9 +6,11 @@ Corpus-informed Russian practice with a Russian/English interface. Kazakhstan is
 
 Hosted trainer: https://regional-russian-trainer.kopako.chatgpt.site
 
-Download `site/dist/index.html` and open it in a browser, or use the hosted version linked below. It contains all 94 teaching targets and their measured frequencies. Choose RU / EN, practise recognition or recall, inspect evidence, and open a genuine ChatGPT conversation for the selected word. The ChatGPT hand-off includes the evidence and an editable prompt; a copy button is available if pre-filling is unsupported. The conversation takes place in the user's ChatGPT account and is not a simulated chatbot.
+Download `site/standalone/index.html` and open it in a browser, or use the hosted version linked above. It contains all 94 teaching targets and their measured frequencies. Choose RU / EN, practise recognition or recall, inspect evidence, and open a genuine ChatGPT conversation for the selected word. The ChatGPT hand-off includes the evidence and an editable prompt; a copy button is available if pre-filling is unsupported. The conversation takes place in the user's ChatGPT account and is not a simulated chatbot.
 
-The public static version does not inherit the author's ChatGPT/MCP connections. Embedded API dialogue and new-country collection require the separately configured local server below. It never reports an unconfigured service as a successful collection.
+The hosted version has its own server and per-user persistent storage. It does not inherit the author's ChatGPT/MCP connections. Choose **Connect GICR / Подключить ГИКРЯ** and authorise a separate connection on the RNC provider's domain; the trainer never asks for your RNC password. Access and refresh tokens remain server-side. Corpus requests start only after a separate Start click. API dialogue additionally requires an operator-configured OpenAI API key and model. The local server below remains an alternative.
+
+On the hosted site, keep the separate progress window open. Each explicit foreground step performs at most one count; closing the window stops further steps after the current response. Saved jobs can be reopened and continued manually. This is persistent, resumable work, not an autonomous background collector. Reopening a job never starts a count by itself.
 
 ## Run the collector / Запустить сбор
 
@@ -18,7 +20,7 @@ Python 3.10 or newer; no third-party Python packages required.
 python backend/server.py
 ```
 
-Open `http://127.0.0.1:8765`. The default server serves only `site/dist`, not private runtime files. Configure authorized service access in environment variables before starting:
+Open `http://127.0.0.1:8765`. The default server serves only `site/standalone`, not private runtime files. Configure authorized service access in environment variables before starting:
 
 ```sh
 export RNC_MCP_URL='https://YOUR-AUTHORIZED-TEST-MCP-ENDPOINT'
@@ -57,9 +59,13 @@ The result is **a frequency screen among tested candidates**, not the complete K
 python -m unittest discover -s backend -p 'test_*.py' -v
 python scripts/build_final_data.py --validate-only
 python site/build_data.py
+node --test site/worker/runtime.test.mjs
+node site/test_frontend.cjs
 ```
 
 The first command runs fixture-based protocol and server tests; it makes no live corpus requests. Data rebuilding requires the private source research archive and is not necessary to run the published trainer. The public final data are the application input. See source comments for the distinction between tests, live access and pedagogical validation.
+
+The hosted Worker implementation and its independent OAuth connection are documented in [site/worker/README.md](site/worker/README.md). To rebuild the hosted artifact, configure your own Site identity using `site/.openai/hosting.example.json`, preserve Sites authentication, set `SESSION_SECRET` as a runtime secret and run `bash site/scripts/build.sh` followed by `node site/scripts/validate-artifact.mjs`. The build embeds the public final JSON and frozen candidate input; it does not need the private research archive. `OPENAI_API_KEY` and `OPENAI_MODEL` remain optional operator runtime settings. Corpus and model access have separate availability states. A successful build or deployment does not prove a user has completed a provider grant or that model billing is configured.
 
 Original documents, private archives, credentials, intermediate results and audit reports are intentionally absent. Third-party resource attribution and any applicable source terms are preserved; no blanket licence over third-party source material is asserted.
 

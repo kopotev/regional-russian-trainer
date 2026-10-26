@@ -397,7 +397,7 @@ def make_handler(manager,static_root):
             except ServiceError as exc:self.send(503,{'error':exc.public()})
     return Handler
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--port',type=int,default=8765);parser.add_argument('--static',type=Path,default=ROOT/'site'/'dist');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--port',type=int,default=8765);parser.add_argument('--static',type=Path,default=ROOT/'site'/'standalone');args=parser.parse_args()
     url=os.environ.get('RNC_MCP_URL','')
     if url and (urlsplit(url).scheme!='https' or not urlsplit(url).hostname):raise SystemExit('RNC_MCP_URL must be an HTTPS MCP endpoint')
     # One process owns a runtime directory, even if a second port is requested.

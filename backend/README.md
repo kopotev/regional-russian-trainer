@@ -10,7 +10,7 @@ Python 3.10 or later; no third-party Python dependencies.
 python3 backend/server.py
 ```
 
-Open `http://127.0.0.1:8765`. The public frontend is served from `site/dist` by default. Never point `--static` at a research archive, credentials directory, or the entire working checkout. The local `runtime` directory contains private state and full source responses. Do not add it to Git.
+Open `http://127.0.0.1:8765`. The public frontend is served from `site/standalone` by default. Never point `--static` at a research archive, credentials directory, or the entire working checkout. The local `runtime` directory contains private state and full source responses. Do not add it to Git.
 
 Configure environment variables in the operator's shell or deployment secret manager, never in HTML or committed files:
 
