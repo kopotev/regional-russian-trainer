@@ -1,0 +1,7 @@
+{
+  "candidate_pairs": 24166,
+  "sha256": "76e81d01b0a65a661bb976ee91ec07449e22727d1d3f49598af9c4683c87c257",
+  "order": "frozen review_order from Kazakhstan screen; identical for every new country",
+  "source_pool_sha256": "7945e9b518e188b4fe6e52ac88f0dd7e95e538470acbca8ba582cd4ebf197c4d",
+  "note": "Candidate lexicon, not Kazakhstan results; no held-out control data. Only lemma and POS are redistributed here."
+}

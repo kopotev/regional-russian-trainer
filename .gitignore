@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+runtime/
+inputs/
+research/
+helpers/
+*.zip
+*.tar.gz
+qa/
+.sites-runtime/
+
