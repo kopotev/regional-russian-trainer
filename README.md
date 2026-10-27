@@ -1,4 +1,4 @@
-# Regional Russian trainer / Русский язык по странам
+# Regional Russian trainer 
 
 Corpus-informed Russian practice with a Russian/English interface. Kazakhstan is the pilot; its frequency collection was **closed at 94 distinct lemmas on 26 October 2026 by the project author**. No further Kazakhstan collection is scheduled.
 
