@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "sh -c 'exec python3 -m http.server 4173 --bind 0.0.0.0 --directory standalone'",
     "build": "bash scripts/build.sh",
     "validate": "node scripts/validate-artifact.mjs"
   }

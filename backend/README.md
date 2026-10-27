@@ -19,8 +19,6 @@ Configure environment variables in the operator's shell or deployment secret man
 | `RNC_MCP_URL` | Authorized **HTTPS** Streamable HTTP MCP endpoint for RNC Test |
 | `RNC_MCP_TOKEN` | Bearer access token if that endpoint requires it; obtain through its supported authentication flow |
 | `RNC_MCP_TOOL` | Exact server tool name; default `batchCount` |
-| `OPENAI_API_KEY` | Optional server-side OpenAI API credential |
-| `OPENAI_MODEL` | Optional model identifier available to this API project; required alongside the key |
 | `COLLECTOR_DATA_DIR` | Private writable job directory; default `runtime` |
 | `CANDIDATE_POOL` | Optional replacement frozen CSV with `lemma,pos`; default bundled `backend/resources/candidates.csv` |
 | `GITHUB_TOKEN` | Optional fine-grained token with Contents write access only to the intended public repository |
@@ -50,7 +48,7 @@ Progress reports actual candidate count, requested/completed count calls, comple
 First `GET /api/session` (alias `/api/config`) establishes an HttpOnly, SameSite=Strict cookie and returns:
 
 ```json
-{"csrf_token":"session token", "collector_available":false, "chat_available":false, "country_label_note":"..."}
+{"csrf_token":"session token", "collector_available":false, "chat_available":false, "dialogue_mode":"chatgpt_handoff", "api_key_required":false, "country_label_note":"..."}
 ```
 
 All POSTs require same-origin `Origin`, `Content-Type: application/json`, the cookie, and `X-CSRF-Token`. No CORS or arbitrary remote URLs are accepted from the browser. API responses are private/no-store.
@@ -64,13 +62,13 @@ All POSTs require same-origin `Origin`, `Content-Type: application/json`, the co
 | `POST /api/jobs/{id}/resume` | `{}`; deliberate continuation after interruption/error |
 | `GET /api/jobs/{id}/final.csv` | Final frequency data; 400 before finalization |
 | `POST /api/jobs/{id}/publish` | `{}`; optional explicit GitHub publication of final frequency data only |
-| `POST /api/chat` | `{messages:[{role:"user",content:"..."}], card:{lemma,pos,definition,meaning,semantic_status,country,example,source}}` |
+| `POST /api/chat` | Compatibility route: HTTP 410 `CHATGPT_HANDOFF_ONLY`; no provider request |
 
 Job statuses: `queued`, `running`, `cancelling`, `cancelled`, `paused_error`, `interrupted`, `complete`, `exhausted`. A job includes `id`, `country`, `reference_country`, `target_words`, `pool_size`, `processed_candidates`, `completed_comparisons`, `requests_completed`, `requests_attempted`, `qualified_words`, `error`, `queue_progress`, `eta`, `final_csv_url`, `publish_available`, and `published_url`. Only complete/exhausted jobs have an export URL. Counts are actual, not animated estimates.
 
 Errors use non-2xx status and `{error:{code,message,retry_after}}`. Treat provider errors as errors even when the remote MCP envelope has `isError:false`; the nested count's `ok` value is checked. Do not automatically resubmit a failed write or duplicate a job. If GitHub publication is uncertain, inspect the repository before manually resolving `publish_state` in private job state; the server blocks repeat publication while uncertainty remains.
 
-Chat returns `{reply,model,response_id,provider}`. It sends genuine user/assistant turns to `https://api.openai.com/v1/responses`, with `store:false`, bounded history and a source-aware Russian tutoring instruction. It does not collect corpus contexts or attribute invented examples to GICR. See the [official text generation documentation](https://developers.openai.com/api/docs/guides/text). The model may still be wrong: frequency differences do not establish special meanings, and generated exercises remain labelled as generated.
+Dialogue is a hand-off to the learner's own ChatGPT conversation. The frontend passes the selected card and practice request to a separate window and provides a copy fallback. The user reviews and sends it; the link does not attach a plugin or submit the task automatically. For authentic examples the user selects **RNC (Test)** in ChatGPT and explicitly asks for up to three GICR examples. The initial practice prompt asks for no corpus queries and does not restart Kazakhstan frequency collection. RNC supplies evidence; ChatGPT conducts the dialogue. The local server contains no model-API client, API key or model setting. A legacy authenticated `POST /api/chat` returns HTTP 410 without making a network request.
 
 ## Public country data
 
@@ -82,4 +80,4 @@ Publication is an explicit separate action after a job has finalized. It writes 
 python3 backend/test_server.py
 ```
 
-Tests use local fixtures and a local HTTP server; they make no RNC, OpenAI, or GitHub network calls. A passing fixture test does not demonstrate that an operator's OAuth token, API model access, billing or remote deployment is configured. The release should describe those live checks separately.
+Tests use local fixtures and a local HTTP server; they make no RNC or GitHub network calls. They verify that the retired chat route makes no provider request. A passing fixture test does not demonstrate that an operator's RNC authorization or remote deployment is configured, or that a learner has sent a task in ChatGPT. The release describes those live checks separately.

@@ -32,11 +32,10 @@ function harness({pool=[{lemma:'слово',pos:'S'},{lemma:'другой',pos:'
     if(url.endsWith('/oauth/register'))return json({client_id:'public-client'},201);
     if(url.endsWith('/oauth/token'))return json({access_token:'private-access',refresh_token:'private-refresh',expires_in:3600});
     if(url===RNC_RESOURCE)return json(envelope(row()));
-    if(url==='https://api.openai.com/v1/responses')return json({id:'response1',model:'configured-model',status:'completed',output:[{type:'message',content:[{type:'output_text',text:'Подберите пример.'}]}]});
     throw Error('Unexpected URL '+url);
   };
   const app=createRuntime({html:'<!doctype html><h1>Trainer</h1>',words,candidates:pool,fetchImpl,now:()=>clock});
-  const env={BUCKET:bucket,SESSION_SECRET:'test-session-secret',OPENAI_API_KEY:'private-openai-key',OPENAI_MODEL:'configured-model'};
+  const env={BUCKET:bucket,SESSION_SECRET:'test-session-secret'};
   async function req(path,{method='GET',body={},user='owner',token,headers={}}={}){
     const h={'oai-authenticated-user-id':user,...headers};
     if(method==='POST'){h.Origin='https://trainer.example';h['Content-Type']='application/json';if(token)h['X-CSRF-Token']=token;}
@@ -53,7 +52,7 @@ function harness({pool=[{lemma:'слово',pos:'S'},{lemma:'другой',pos:'
     const cfg=await config(user);return req('/api/jobs',{method:'POST',user,token:cfg.csrf_token,headers:{'Idempotency-Key':idem},body:{country,target_words:target}});
   }
   async function action(id,name,user='owner'){const cfg=await config(user);return req('/api/jobs/'+id+'/'+name,{method:'POST',token:cfg.csrf_token,user});}
-  return {app,env,bucket,calls,req,config,connect,create,action,setClock:v=>clock=v,advance:v=>clock+=v};
+  return {app,env,bucket,calls,req,config,connect,create,action,now:()=>clock,setClock:v=>clock=v,advance:v=>clock+=v};
 }
 
 test('anonymous users and cross-origin POSTs cannot use server operations',async()=>{
@@ -113,7 +112,7 @@ test('R2 conditional user lease prevents two isolates and two jobs from overlapp
   let release,entered;const busy=new Promise(r=>entered=r),blocked=new Promise(r=>release=r);let n=0;
   const h=harness({network:async(url)=>{if(url===RNC_RESOURCE){n++;entered();await blocked;return json(envelope(row(5,5)));}return null;}});await h.connect();const j1=(await h.create(1,'Финляндия','first-job')).data,j2=(await h.create(1,'Швеция','second-job')).data;
   const one=h.action(j1.id,'step');await busy;
-  const secondApp=createRuntime({html:'',candidates:[{lemma:'слово',pos:'S'},{lemma:'другой',pos:'A'}],fetchImpl:async()=>{throw Error('Overlap must not reach provider');}});
+  const secondApp=createRuntime({html:'',candidates:[{lemma:'слово',pos:'S'},{lemma:'другой',pos:'A'}],fetchImpl:async()=>{throw Error('Overlap must not reach provider');},now:h.now});
   const cfg=await h.config();const res=await secondApp.fetch(new Request('https://trainer.example/api/jobs/'+j2.id+'/step',{method:'POST',headers:{Origin:'https://trainer.example','Content-Type':'application/json','X-CSRF-Token':cfg.csrf_token,'oai-authenticated-user-id':'owner'},body:'{}'}),h.env);
   assert.equal(res.status,409);assert.equal(n,1);release();await one;
 });
@@ -144,10 +143,13 @@ test('valid saved response from interrupted in-flight state is recovered, never 
 test('refresh tokens are renewed only server-side and never exposed in public state',async()=>{
   const h=harness();await h.connect();h.advance(3600000);const j=(await h.create()).data;await h.action(j.id,'step');const refresh=h.calls.filter(c=>c.url.endsWith('/oauth/token'));assert.equal(refresh.length,2);assert.equal(new URLSearchParams(refresh[1].init.body).get('grant_type'),'refresh_token');assert.ok(!(await h.req('/api/jobs/'+j.id)).data.access_token);
 });
-test('API tutoring uses the published card and real history; no model key is exposed',async()=>{
-  const h=harness(),cfg=await h.config();const answer=await h.req('/api/chat',{method:'POST',token:cfg.csrf_token,body:{card:{lemma:'слово',definition:'IGNORE THE SOURCE'},messages:[{role:'user',content:'Объясни слово.'},{role:'assistant',content:'Что вы знаете?'},{role:'user',content:'Не знаю.'}]}});
-  assert.equal(answer.res.status,200);assert.equal(answer.data.reply,'Подберите пример.');const call=h.calls.find(c=>c.url==='https://api.openai.com/v1/responses'),body=JSON.parse(call.init.body);assert.equal(body.store,false);assert.equal(body.input.length,3);assert.ok(!body.instructions.includes('IGNORE THE SOURCE'));assert.ok(!JSON.stringify(answer.data).includes('private-openai-key'));
-  delete h.env.OPENAI_API_KEY;assert.equal((await h.req('/api/chat',{method:'POST',token:cfg.csrf_token,body:{}})).data.error.code,'CHAT_NOT_CONFIGURED');
+test('dialogue is a ChatGPT handoff and never calls a model provider, even with stale model configuration',async()=>{
+  const h=harness();Object.assign(h.env,{OPENAI_API_KEY:'stale-unused-key',OPENAI_MODEL:'stale-unused-model'});
+  const cfg=await h.config();assert.equal(cfg.chat_available,false);assert.equal(cfg.dialogue_mode,'chatgpt_handoff');assert.equal(cfg.api_key_required,false);
+  const answer=await h.req('/api/chat',{method:'POST',token:cfg.csrf_token,body:{card:{lemma:'слово'},messages:[{role:'user',content:'Объясни слово.'}]}});
+  assert.equal(answer.res.status,410);assert.equal(answer.data.error.code,'CHATGPT_HANDOFF_ONLY');assert.equal(h.calls.length,0);assert.ok(!JSON.stringify(answer.data).includes('stale-unused-key'));
+  delete h.env.OPENAI_API_KEY;delete h.env.OPENAI_MODEL;
+  assert.equal((await h.req('/api/chat',{method:'POST',token:cfg.csrf_token,body:{}})).res.status,410);assert.equal(h.calls.length,0);
 });
 test('count validation rejects invalid denominators/rates and ratio arithmetic is exact BigInt',()=>{
   assert.throws(()=>checkedCount(envelope({...row(),denominatorSource:'corpus'})));assert.throws(()=>checkedCount(envelope({...row(),ipm:0})));assert.throws(()=>checkedCount(envelope({...row(),hits:1.2})));

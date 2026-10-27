@@ -62,15 +62,16 @@ class PipelineTests(unittest.TestCase):
     def test_eta_does_not_claim_target_time(self):
         m=self.manager([count(5,3),count(8,4)]);m.create('Канада',2);j=self.finish(m);p=m.public(j)
         self.assertIsNone(p['eta']['target_completion_seconds']);self.assertEqual(p['eta']['basis'],'full_remaining_queue_not_target_words')
-    def test_chat_transmits_history_without_key_in_output(self):
-        response={'id':'r1','status':'completed','model':'chosen','output':[{'type':'message','content':[{'type':'output_text','text':'Как вы употребите это слово?'}]}]}
-        with patch.dict(os.environ,{'OPENAI_API_KEY':'test-secret','OPENAI_MODEL':'chosen'}),patch.object(s,'json_http',return_value=(response,{})) as http:
-            result=s.tutor({'messages':[{'role':'user','content':'Привет'}],'card':{'lemma':'акимақ','semantic_status':'not_semantically_verified'}})
-        args=http.call_args.args;self.assertEqual(args[0],'https://api.openai.com/v1/responses');self.assertFalse(args[1]['store']);self.assertEqual(args[1]['input'][0]['content'],'Привет');self.assertNotIn('test-secret',json.dumps(result))
-    def test_chat_unconfigured_is_explicit(self):
-        with patch.dict(os.environ,{},clear=True):
-            with self.assertRaises(s.ServiceError) as caught:s.tutor({'messages':[]})
-        self.assertEqual(caught.exception.code,'CHAT_NOT_CONFIGURED')
+    def test_chat_route_is_handoff_only_without_provider_calls(self):
+        m=self.manager([]);server=ThreadingHTTPServer(('127.0.0.1',0),s.make_handler(m,self.root));thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();base='http://127.0.0.1:'+str(server.server_port)
+        try:
+            with urlopen(base+'/api/config') as r:config=json.load(r);cookie=r.headers['Set-Cookie'].split(';')[0]
+            self.assertFalse(config['chat_available']);self.assertFalse(config['api_key_required']);self.assertEqual(config['dialogue_mode'],'chatgpt_handoff')
+            req=Request(base+'/api/chat',b'{}',{'Content-Type':'application/json','Cookie':cookie,'Origin':base,'X-CSRF-Token':config['csrf_token']})
+            with patch.object(s,'json_http') as http:
+                with self.assertRaises(HTTPError) as caught:urlopen(req)
+                self.assertEqual(caught.exception.code,410);self.assertEqual(json.load(caught.exception)['error']['code'],'CHATGPT_HANDOFF_ONLY');http.assert_not_called()
+        finally:server.shutdown();server.server_close();thread.join()
     def test_publish_only_final_frequency_data(self):
         import base64
         m=self.manager([count(),count(10,10)]);m.create('Канада',1);j=self.finish(m)

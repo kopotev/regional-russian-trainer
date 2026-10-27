@@ -14,16 +14,14 @@ Required hosted configuration:
   and remove the previous static-only configuration.
 * `SESSION_SECRET`: fresh secret configured through the hosting control plane.
 * `BUCKET`: private R2 binding, provisioned by Sites.
-* `OPENAI_API_KEY` and `OPENAI_MODEL`: optional server-side API configuration.
-  ChatGPT subscription access is not an API key. With these absent, no model
-  response is simulated; the interface retains its separate ChatGPT route.
 
 Sites continues to own login. Every server operation requires its trusted
 `oai-authenticated-user-id` header. Private OAuth grants, request records and jobs
 are stored beneath a SHA-256 namespace derived from that Site-specific identity.
 
 `GET /api/config` supplies a signed, user-bound `csrf_token`, connection flags
-and `execution_mode: "foreground_steps"`. Mutations require exact same-origin
+and `execution_mode: "foreground_steps"`. Dialogue flags are `chat_available: false`,
+`dialogue_mode: "chatgpt_handoff"` and `api_key_required: false`. Mutations require exact same-origin
 `Origin`, JSON and `X-CSRF-Token`. There is no arbitrary URL or tool proxy.
 
 ## RNC connection
@@ -36,6 +34,22 @@ before exchanging a code. Tokens stay server-side. New grants are independent
 of any existing ChatGPT plugin grant. Callback success confirms authorization,
 not that a corpus count has already succeeded. `POST /api/rnc/disconnect` removes
 the trainer's local authorization record; no provider credentials are shown.
+
+## Dialogue in ChatGPT
+
+The website has no model-API client and requires no OpenAI API key. Its dialogue
+button opens ChatGPT with the selected card, provenance and an editable practice
+request. A copy fallback covers clients that do not preserve pre-filled text.
+The learner reviews and sends the task. Opening the link neither attaches a
+plugin nor runs a corpus query.
+
+For real corpus examples, the learner selects the connected **RNC (Test)**
+plugin in that ChatGPT conversation and explicitly asks for examples. The
+prepared request starts with three GICR examples for Kazakhstan VKontakte posts,
+all available years. Initial dialogue uses the supplied card and does not
+restart the stopped Kazakhstan frequency screen. ChatGPT conducts the dialogue;
+RNC returns evidence. `POST /api/chat` remains only as an authenticated HTTP 410
+`CHATGPT_HANDOFF_ONLY` response and performs no external request.
 
 ## Collection
 
@@ -68,8 +82,9 @@ pedagogical labels and counts a lemma once. It collects no contexts.
 The 18 automated tests use in-memory R2 and controlled provider responses. They
 cover PKCE state binding and replay, user isolation, CSRF, exact counts,
 conditional cross-isolate exclusion, cancellation, persisted-response recovery,
-unconfirmed zeros, malformed responses, rate limits, exact ratios and real-API
-adapter payloads. They make no live RNC or model calls. Live authorization,
-provider availability, billing and actual model output require separate checks.
+unconfirmed zeros, malformed responses, rate limits, exact ratios and the retired
+chat route. They make no live RNC calls. Live RNC authorization and provider
+availability require separate checks; fixture tests do not validate a learner's
+ChatGPT conversation.
 
 R2 contract: https://developers.cloudflare.com/r2/api/workers/workers-api-reference/

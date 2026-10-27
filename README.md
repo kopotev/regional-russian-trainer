@@ -6,11 +6,20 @@ Corpus-informed Russian practice with a Russian/English interface. Kazakhstan is
 
 Hosted trainer: https://regional-russian-trainer.kopako.chatgpt.site
 
-Download `site/standalone/index.html` and open it in a browser, or use the hosted version linked above. It contains all 94 teaching targets and their measured frequencies. Choose RU / EN, practise recognition or recall, inspect evidence, and open a genuine ChatGPT conversation for the selected word. The ChatGPT hand-off includes the evidence and an editable prompt; a copy button is available if pre-filling is unsupported. The conversation takes place in the user's ChatGPT account and is not a simulated chatbot.
+Download `site/standalone/index.html` and open it in a browser, or use the hosted version linked above. It contains all 94 teaching targets and their measured frequencies. Choose RU / EN, practise recognition or recall, inspect evidence, and open a genuine ChatGPT conversation for the selected word. The ChatGPT hand-off includes the selected card, its evidence and an editable practice request; a copy button is available if pre-filling is unsupported. The user sends the task in ChatGPT, where the real conversation takes place. No OpenAI API key is needed. Opening the link does not automatically send the task, attach a plugin or run a corpus query.
 
-The hosted version has its own server and per-user persistent storage. It does not inherit the author's ChatGPT/MCP connections. Choose **Connect GICR / Подключить ГИКРЯ** and authorise a separate connection on the RNC provider's domain; the trainer never asks for your RNC password. Access and refresh tokens remain server-side. Corpus requests start only after a separate Start click. API dialogue additionally requires an operator-configured OpenAI API key and model. The local server below remains an alternative.
+The hosted version has its own server and per-user persistent storage. It does not inherit the author's ChatGPT/MCP connections. Choose **Connect GICR / Подключить ГИКРЯ** and authorise a separate connection on the RNC provider's domain; the trainer never asks for your RNC password. Access and refresh tokens remain server-side. Corpus requests start only after a separate Start click. The dialogue uses ChatGPT itself; the website does not call a model API. The local server below remains an alternative for collection.
 
 On the hosted site, keep the separate progress window open. Each explicit foreground step performs at most one count; closing the window stops further steps after the current response. Saved jobs can be reopened and continued manually. This is persistent, resumable work, not an autonomous background collector. Reopening a job never starts a count by itself.
+
+## Dialogue with ChatGPT and RNC / Диалог с ChatGPT и RNC
+
+1. Select a word and choose **Practise in ChatGPT / Тренироваться в ChatGPT**. Review and send the prepared task in the separate ChatGPT window.
+2. ChatGPT asks one question at a time, waits for the learner, and gives brief corrective feedback. It receives the card's editorial example and frequency provenance; these are not presented as new corpus quotations or proof of a distinct regional meaning.
+3. For authentic corpus examples, select the connected **RNC (Test)** plugin in that ChatGPT conversation and explicitly request examples. The prepared request asks for three GICR examples from VKontakte posts for Kazakhstan, across available years. Plugin availability depends on the user's ChatGPT account and connection.
+4. Opening the dialogue starts no corpus request and never resumes the closed Kazakhstan frequency run. The website also offers a copyable corpus request; the learner submits it deliberately. If RNC is unavailable, practise from the supplied card without inventing corpus evidence.
+
+ChatGPT provides the dialogue; RNC provides corpus evidence. The RNC plugin is not a chatbot embedded in the website. New-country frequency collection remains the separate, explicit workflow below.
 
 ## Run the collector / Запустить сбор
 
@@ -25,12 +34,10 @@ Open `http://127.0.0.1:8765`. The default server serves only `site/standalone`, 
 ```sh
 export RNC_MCP_URL='https://YOUR-AUTHORIZED-TEST-MCP-ENDPOINT'
 export RNC_MCP_TOKEN='YOUR-OWN-AUTHORIZED-TOKEN'
-export OPENAI_API_KEY='YOUR-OWN-API-KEY'
-export OPENAI_MODEL='YOUR-AVAILABLE-RESPONSES-MODEL'
 python backend/server.py
 ```
 
-Do not put keys in HTML, Git, country files, screenshots or browser storage. ChatGPT subscription access is separate from API credentials. Model and endpoint are operator configuration, not guessed runtime values. See [backend/README.md](backend/README.md) for the exact API, restart/cancellation behaviour and configuration.
+Do not put corpus credentials in HTML, Git, country files, screenshots or browser storage. The RNC endpoint is operator configuration, not a guessed runtime value. The dialogue has no API credential or model configuration. See [backend/README.md](backend/README.md) for the exact API, restart/cancellation behaviour and configuration.
 
 Enter the exact Russian country metadata label (for example, `Финляндия`). A separate window presents the duration warning and starts only after an explicit confirmation. It displays actual examined candidates, completed counts and passing distinct lemmas. Estimated time describes the remaining candidate workload, not a promise that a particular number of words will qualify. No contexts are collected by this stage.
 
@@ -65,7 +72,7 @@ node site/test_frontend.cjs
 
 The first command runs fixture-based protocol and server tests; it makes no live corpus requests. Data rebuilding requires the private source research archive and is not necessary to run the published trainer. The public final data are the application input. See source comments for the distinction between tests, live access and pedagogical validation.
 
-The hosted Worker implementation and its independent OAuth connection are documented in [site/worker/README.md](site/worker/README.md). To rebuild the hosted artifact, configure your own Site identity using `site/.openai/hosting.example.json`, preserve Sites authentication, set `SESSION_SECRET` as a runtime secret and run `bash site/scripts/build.sh` followed by `node site/scripts/validate-artifact.mjs`. The build embeds the public final JSON and frozen candidate input; it does not need the private research archive. `OPENAI_API_KEY` and `OPENAI_MODEL` remain optional operator runtime settings. Corpus and model access have separate availability states. A successful build or deployment does not prove a user has completed a provider grant or that model billing is configured.
+The hosted Worker implementation and its independent OAuth connection are documented in [site/worker/README.md](site/worker/README.md). To rebuild the hosted artifact, configure your own Site identity using `site/.openai/hosting.example.json`, preserve Sites authentication, set `SESSION_SECRET` as a runtime secret and run `bash site/scripts/build.sh` followed by `node site/scripts/validate-artifact.mjs`. The build embeds the public final JSON and frozen candidate input; it does not need the private research archive. The hosted and local runtimes contain no model-API client. Corpus access and the separate ChatGPT conversation are independent. A successful build or deployment does not prove that a user has completed RNC authorization or sent the practice task in ChatGPT.
 
 Original documents, private archives, credentials, intermediate results and audit reports are intentionally absent. Third-party resource attribution and any applicable source terms are preserved; no blanket licence over third-party source material is asserted.
 
